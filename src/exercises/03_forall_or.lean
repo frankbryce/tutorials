@@ -54,7 +54,7 @@ begin
   calc (f + g) (-x) = f (-x) + g (-x) : rfl
   ... = f x + g (-x) : by rw hf x 
   ... = f x + g x : by rw hg x 
-  ... = (f + g) x : rfl
+  ... = (f + g) x : rfl,
 end
 
 /-
@@ -90,7 +90,7 @@ example (f g : ℝ → ℝ) : even_fun f → even_fun g →  even_fun (f + g) :=
 begin
   intros hf hg x,
   calc (f + g) (-x) = f (-x) + g (-x) : rfl
-  ... = f x + g x : by rw [hf, hg] 
+  ... = f x + g x : by rw [hf, hg],
 end
 
 /-
@@ -101,13 +101,24 @@ you can put your mouse cursor above the symbol and wait for one second.
 -- 0023
 example (f g : ℝ → ℝ) : even_fun f → even_fun (g ∘ f) :=
 begin
-  sorry
+  intros hf,
+  unfold even_fun at hf,
+  unfold even_fun,
+  intros x,
+  calc (g ∘ f) (-x) = g(f (-x)) : rfl
+  ... = g(f x)                  : by rw hf
+  ... = (g ∘ f) x               : rfl,
 end
 
 -- 0024
 example (f g : ℝ → ℝ) : odd_fun f → odd_fun g →  odd_fun (g ∘ f) :=
 begin
-  sorry
+  intros hf hg x,
+  unfold odd_fun at hf,
+  unfold odd_fun at hg,
+  calc (g ∘ f) (-x) = g(f (-x)) : rfl
+  ... = -g(f x)                 : by rw [hf, hg]
+  ... = -(g ∘ f) x              : rfl,
 end
 
 /-
@@ -189,13 +200,16 @@ begin
   -- which follows from our assumption on f
   apply hf,
   -- and on x₁ and x₂
-  exact h
+  exact h,
 end
 
 -- 0025
 example (f g : ℝ → ℝ) (hf : non_decreasing f) (hg : non_increasing g) : non_increasing (g ∘ f) :=
 begin
-  sorry
+  intros x₁ x₂ h,
+  apply hg,
+  apply hf,
+  exact h,
 end
 
 /-
@@ -236,7 +250,13 @@ end
 -- 0026
 example (x y : ℝ) : x^2 = y^2 → x = y ∨ x = -y :=
 begin
-  sorry
+  intro h,
+  have H : (x-y)*(x+y) = 0,
+  { linarith, },
+  rw mul_eq_zero at H,
+  cases H with Hsub Hadd,
+  { left, linarith, },
+  { right, linarith, },
 end
 
 /-
@@ -247,7 +267,19 @@ In the next exercise, we can use:
 -- 0027
 example (f : ℝ → ℝ) : non_decreasing f ↔ ∀ x y, x < y → f x ≤ f y :=
 begin
-  sorry
+  split,
+  { intros hf x y hxy,
+    have hle : x ≤ y, { linarith, },
+    exact hf x y hle,
+  },
+  { intros h,
+    unfold non_decreasing,
+    intros x y hxy,
+    have fact : x=y ∨ x<y, { exact eq_or_lt_of_le hxy, },
+    cases fact with eq lt,
+    { apply le_of_eq, rw eq, },
+    { exact h x y lt, },
+  },
 end
 
 /-
@@ -258,6 +290,19 @@ In the next exercise, we can use:
 -- 0028
 example (f : ℝ → ℝ) (h : non_decreasing f) (h' : ∀ x, f (f x) = x) : ∀ x, f x = x :=
 begin
-  sorry
+  intros x,
+  cases le_total (f x) x with flex xlef,
+  { specialize h (f x) x,
+    have key : x ≤ f x,
+    { rw h' x at h,
+      exact h flex, },
+    linarith,
+  },
+  { specialize h x (f x),
+    have key : f x ≤ x,
+    { rw h' x at h,
+      exact h xlef,
+    },
+    linarith,
+  },
 end
-

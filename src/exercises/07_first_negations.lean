@@ -49,7 +49,8 @@ open int
 -- 0045
 example (n : ℤ) (h_even : even n) (h_not_even : ¬ even n) : 0 = 1 :=
 begin
-  sorry
+  exfalso,
+  exact h_not_even h_even,
 end
 
 -- 0046
@@ -120,7 +121,12 @@ non Q ⇒ non P.
 -- 0047
 example (P Q : Prop) (h : ¬ Q → ¬ P) : P → Q :=
 begin
-  sorry
+  by_contradiction H,
+  push_neg at H,
+  have hP : P, from H.left,
+  have hQ' : ¬Q, from H.right,
+  have hP' : ¬P, from h hQ',
+  exact hP' hP,
 end
 
 /-
@@ -142,7 +148,26 @@ In the next exercise, we'll use
 -- 0048
 example (n : ℤ) : even (n^2) ↔ even n :=
 begin
-  sorry
+  split,
+  { intros hn2,
+    by_contradiction hne,
+    have hodd : odd n, from int.odd_iff_not_even.mpr hne,
+    cases hodd with k hnk,
+    have hn22l1 : n^2 = 2*(2*k^2 + 2*k)+1,
+    { calc n^2 = n*n : by ring
+      ... = (2*k+1)*(2*k+1) : by rw ← hnk
+      ... = 2*(2*k^2 + 2*k) + 1 : by ring, },
+    have hodd2 : odd (n^2),
+    { use (2*k^2 + 2*k), exact hn22l1, },
+    exact (int.odd_iff_not_even.mp hodd2) hn2,
+  },
+  { intro hn, 
+    cases hn with k hn,
+    use (2*k^2),
+    calc n^2 = n*n : by ring
+    ... = (2*k)*(2*k) : by rw ← hn
+    ... = 2*(2*k^2) : by ring,
+  },
 end
 /-
 As a last step on our law of the excluded middle tour, let's notice that, especially
@@ -184,7 +209,24 @@ end
 -- 0049
 example : ¬ (P ∧ Q) ↔ ¬ P ∨ ¬ Q :=
 begin
-  sorry
+  split,
+  { intros h,
+    push_neg at h,
+    by_cases hP : P,
+    { right,
+      exact h hP,
+    },
+    { left,
+      exact hP,
+    },
+  },
+  { intros h,
+    push_neg,
+    intros hP,
+    cases h with hnP hnQ,
+    { exfalso, exact hnP hP, },
+    { exact hnQ, },
+  },
 end
 
 /-
@@ -196,7 +238,17 @@ In the first exercise, only the definition of negation is needed.
 -- 0050
 example (n : ℤ) : ¬ (∃ k, n = 2*k) ↔ ∀ k, n ≠ 2*k :=
 begin
-  sorry
+  split,
+  { intros h k hk,
+    have key : ∃ k, n = 2*k, { use k, exact hk, },
+    exact h key,
+  },
+  { intros h,
+    by_contradiction H,
+    cases H with k H,
+    specialize h k,
+    exact h H,
+  },
 end
 
 /-
@@ -212,7 +264,15 @@ def even_fun (f : ℝ → ℝ) := ∀ x, f (-x) = f x
 -- 0051
 example (f : ℝ → ℝ) : ¬ even_fun f ↔ ∃ x, f (-x) ≠ f x :=
 begin
-  sorry
+  split,
+  { by_contradiction H,
+    push_neg at H,
+    exact H.left H.right,
+  },
+  { contrapose!,
+    intros h,
+    exact h,
+  },
 end
 
 /-
@@ -231,7 +291,8 @@ end
 -- 0052
 example (f : ℝ → ℝ) : ¬ even_fun f ↔ ∃ x, f (-x) ≠ f x :=
 begin
-  sorry
+  unfold even_fun,
+  push_neg,
 end
 
 def bounded_above (f : ℝ → ℝ) := ∃ M, ∀ x, f x ≤ M
@@ -249,7 +310,10 @@ end
 -- 0053
 example (x : ℝ) : (∀ ε > 0, x ≤ ε) → x ≤ 0 :=
 begin
-  sorry
+  contrapose!,
+  intros h,
+  use x/2,
+  exact ⟨ by linarith, by linarith⟩,
 end
 
 /-
@@ -263,6 +327,30 @@ Let's use this trick, together with:
 -- 0054
 example (f : ℝ → ℝ) : (∀ x y, x < y → f x < f y) ↔ (∀ x y, (x ≤ y ↔ f x ≤ f y)) :=
 begin
-  sorry
+  split,
+  { intros h,
+    intros x y,
+    split,
+    { have key : ∀ x y, x = y → f x = f y,
+      { intros x y hxy,
+        rwa hxy,
+      },
+      intros hxy,
+      have fact : x = y ∨ x < y,
+        from eq_or_lt_of_le hxy,
+      cases fact with heq hlt,
+      { exact by linarith [key x y heq], },
+      { exact by linarith [h x y hlt]},
+    },
+    { contrapose!,
+      exact h y x,
+    },
+  },
+  { intros h,
+    intros x y,
+    contrapose!,
+    specialize h y x,
+    exact h.mpr,
+  },
 end
 

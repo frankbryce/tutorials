@@ -157,7 +157,10 @@ begin
   intro h,
   -- `h` is exactly saying `y` is a lower bound of `A` so the second part of
   -- the infimum assumption `hx` applied to `y` and `h` is exactly what we want.
-  exact hx.2 y h
+  -- exact hx.2 y h
+  cases hx with x_low x_uplow,
+  specialize x_uplow y,
+  exact x_uplow h
 end
 
 /-
@@ -198,8 +201,8 @@ Next we will study a compressed version of that proof:
 example {x y : ℝ} : (∀ ε > 0, y ≤ x + ε) →  y ≤ x :=
 begin
   contrapose!,
-  exact assume h, ⟨(y-x)/2, by linarith, by linarith⟩,
-end
+  exact assume h, ⟨(y-x)/2, ⟨by linarith, by linarith⟩⟩,
+end 
 
 /-
 The angle brackets `⟨` and `⟩` introduce compound data or proofs. A proof
@@ -392,7 +395,7 @@ begin
     { exact h.1 },
     -- On the next line, we don't need to tell Lean to treat `n+1` as a real number because
     -- we add `x` to it, so Lean knows there is only one way to make sense of this expression.
-    have key : ∀ n : ℕ, ∃ a ∈ A, a < x + 1/(n+1),
+    have key : ∀ n : ℕ, ∃ a ∈ A, a < x + 1/(n+1 : ℝ),
     { intro n,
       -- we can use the lemma we proved above
       apply inf_lt h,

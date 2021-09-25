@@ -42,7 +42,12 @@ Let's prove a variation (without invoking commutativity of addition since this w
 -- 0009
 example {a b : ℝ} (hab : a ≤ b) (c : ℝ) : a + c ≤ b + c :=
 begin
-  sorry
+  rw ← sub_nonneg,
+  have key : b + c - (a + c) = b - a,
+  { ring, },
+  rw key,
+  rw sub_nonneg,
+  exact hab,
 end
 
 
@@ -82,9 +87,12 @@ end
 /- Let's do a variant. -/
 
 -- 0010
+-- add_le_add_right {a b : ℝ} (hab : a ≤ b) (c : ℝ) : a + c ≤ b + c
 example (a b : ℝ) (hb : 0 ≤ b) : a ≤ a + b :=
 begin
-  sorry
+  calc a = 0 + a : by ring
+  ... ≤ b + a    : add_le_add_right hb a
+  ... = a + b    : by ring,
 end
 
 /-
@@ -112,15 +120,27 @@ the pieces.
 -- 0011
 example (a b : ℝ) (ha : 0 ≤ a) (hb : 0 ≤ b) : 0 ≤ a + b :=
 begin
-  sorry
+
+  calc 0 ≤ b  : hb
+  ... ≤ a + b : le_add_of_nonneg_left ha,
 end
 
 /- And let's combine with our earlier lemmas. -/
 
 -- 0012
+-- add_le_add_right {a b : ℝ} (hab : a ≤ b) (c : ℝ) : a + c ≤ b + c
 example (a b c d : ℝ) (hab : a ≤ b) (hcd : c ≤ d) : a + c ≤ b + d :=
 begin
- sorry
+  have key1 : a + c ≤ b + c,
+  { exact add_le_add_right hab c, },
+  have key2 : b + c ≤ b + d,
+  {
+    calc b + c = c + b : by ring
+    ... ≤ d + b        : add_le_add_right hcd b
+    ... = b + d        : by ring,
+  },
+  calc a + c ≤ b + c : key1
+  ... ≤ b + d        : key2,
 end
 
 /-
@@ -172,6 +192,20 @@ begin
   exact h₃,
 end
 
+example (a b c  : ℝ) (hc : 0 ≤ c) (hab : a ≤ b) : a*c ≤ b*c :=
+begin
+  have hab' : 0 ≤ b - a,
+  { rw ← sub_nonneg at hab,
+    exact hab, },
+  have h₁ : 0 ≤ b*c - a*c,
+  {
+    calc 0 ≤ (b - a)*c : mul_nonneg hab' hc
+    ... = b*c - a*c    : by ring,
+  },
+  rw sub_nonneg at h₁,
+  exact h₁,
+end
+
 /-
 One reason why the backward reasoning proof is shorter is because Lean can
 infer of lot of things by comparing the goal and the lemma statement. Indeed
@@ -221,21 +255,38 @@ Let's now practice all three styles using:
 -- 0013
 example (a b c : ℝ) (hc : c ≤ 0) (hab :  a ≤ b) : b*c ≤ a*c :=
 begin
-  sorry
+  rw ← sub_nonneg,
+  have key : a*c - b*c = (a-b)*c,
+  { ring, },
+  rw key,
+  apply mul_nonneg_of_nonpos_of_nonpos,
+  {
+    rw sub_nonpos,
+    exact hab,
+  },
+  { exact hc, },
 end
 
 /- Using forward reasoning -/
 -- 0014
 example (a b c : ℝ) (hc : c ≤ 0) (hab :  a ≤ b) : b*c ≤ a*c :=
 begin
-  sorry
+  have h₁ : a-b ≤ 0,
+  { rwa ← sub_nonpos at hab, },
+  have h₂ : 0 ≤ a*c - b*c,
+  { calc 0 ≤ (a-b)*c : mul_nonneg_of_nonpos_of_nonpos h₁ hc
+    ... = a*c - b*c  : by ring,
+  },
+  rwa sub_nonneg at h₂,
 end
 
 /-- Using a combination of both, with a `calc` block -/
 -- 0015
 example (a b c : ℝ) (hc : c ≤ 0) (hab :  a ≤ b) : b*c ≤ a*c :=
 begin
-  sorry
+  rw ← sub_nonneg,
+  calc 0 ≤ (a-b)*c : mul_nonneg_of_nonpos_of_nonpos (by rwa sub_nonpos) hc
+  ... = a*c - b*c  : by ring,
 end
 
 /-
@@ -278,7 +329,8 @@ Let's practise using `intros`. -/
 -- 0016
 example (a b : ℝ): 0 ≤ b → a ≤ a + b :=
 begin
-  sorry
+  intros hb,
+  exact le_add_of_nonneg_right hb,
 end
 
 
@@ -334,7 +386,11 @@ unspecified mathematical statements.
 -- 0017
 example (P Q R : Prop) : P ∧ Q → Q ∧ P :=
 begin
-  sorry
+  intros hPQ,
+  cases hPQ with hP hQ,
+  split,
+  exact hQ,
+  exact hP,
 end
 
 /-
@@ -367,7 +423,8 @@ Now redo the previous exercise using all those compressing techniques, in exactl
 -- 0018
 example (P Q R : Prop): P ∧ Q → Q ∧ P :=
 begin
-  sorry
+  rintros ⟨hP, hQ⟩,
+  exact ⟨hQ, hP⟩,
 end
 
 /-
@@ -379,7 +436,11 @@ an equivalence into two implications.
 -- 0019
 example (P Q R : Prop) : (P ∧ Q → R) ↔ (P → (Q → R)) :=
 begin
-  sorry
+  split,
+  { intros hConj hP hQ,
+  exact hConj ⟨ hP, hQ ⟩, },
+  { rintros hPQRImp ⟨hP, hQ⟩,
+  exact hPQRImp hP hQ, },
 end
 
 /-
@@ -412,7 +473,7 @@ Now let's enjoy this for a while.
 -- 0020
 example (a b : ℝ) (ha : 0 ≤ a) (hb : 0 ≤ b) : 0 ≤ a + b :=
 begin
-  sorry
+  linarith,
 end
 
 /- And let's combine with our earlier lemmas. -/
@@ -420,7 +481,7 @@ end
 -- 0021
 example (a b c d : ℝ) (hab : a ≤ b) (hcd : c ≤ d) : a + c ≤ b + d :=
 begin
-  sorry
+  linarith,
 end
 
 
@@ -447,6 +508,47 @@ open nat
 -- 0022
 example (a b : ℕ) : a ∣ b ↔ gcd a b = a :=
 begin
-  sorry
+  have fact : gcd a b ∣ a ∧ gcd a b ∣ b,
+  { apply dvd_gcd_iff.mp,
+    exact dvd_refl (gcd a b), },
+  split,
+  {
+    intros hab,
+    apply dvd_antisymm,
+    { exact fact.1, },
+    { exact dvd_gcd_iff.mpr ⟨ dvd_refl a, hab ⟩, },
+  },
+  {
+    intros hgcdab,
+    have key : a ∣ gcd a b,
+    { rw hgcdab, },
+    have key2 : a ∣ a ∧ a ∣ b,
+    { exact dvd_gcd_iff.mp key, },
+    exact key2.right,
+  },
 end
 
+-- gotta try this again after looking at the answer.
+/- for reference
+  dvd_refl (a : ℕ) : a ∣ a 
+
+  dvd_antisymm {a b : ℕ} : a ∣ b → b ∣ a → a = b :=
+  
+  dvd_gcd_iff {a b c : ℕ} : c ∣ gcd a b ↔ c ∣ a ∧ c ∣ b
+-/
+example (a b : ℕ) : a ∣ b ↔ gcd a b = a :=
+begin
+  have fact : gcd a b ∣ a ∧ gcd a b ∣ b,
+  { apply dvd_gcd_iff.mp,
+    exact dvd_refl (gcd a b), },
+  split,
+  { intros hab,
+    have fact' : a ∣ gcd a b,
+    { exact dvd_gcd_iff.mpr ⟨ dvd_refl a, hab ⟩, },
+    exact dvd_antisymm fact.1 fact',
+  },
+  { intros h, 
+    rw ← h,
+    exact fact.2,
+  },
+end
